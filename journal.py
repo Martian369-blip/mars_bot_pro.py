@@ -8,7 +8,6 @@ def init_journal_state(default_start_bal=699.98):
     if "journal_entries" not in st.session_state:
         sast = pytz.timezone("Africa/Johannesburg")
         today_str = datetime.now(sast).strftime("%Y-%m-%d")
-        # Pre-loaded with your actual Nov 13 live opening trade for instant recon
         st.session_state.journal_entries = [
             {
                 "Date": today_str,
@@ -43,11 +42,8 @@ def init_journal_state(default_start_bal=699.98):
 def render_journal_page(live_xm_balance, daily_floor, target_goal=1000.00):
     init_journal_state()
 
-    st.markdown("<div class='ticker-title'>👽 MARS_BOT PRO · Trading Journal & Recon</div>", unsafe_allow_html=True)
+    st.markdown("<div class='ticker-title'>📓 MARS_BOT PRO · Trading Journal & Recon</div>", unsafe_allow_html=True)
 
-    # ---------------------------------------------------------
-    # 1. ACCOUNT RECONCILIATION BAR (CRUCIAL FOR LIVE TRADING)
-    # ---------------------------------------------------------
     df = pd.DataFrame(st.session_state.journal_entries)
     total_pnl = float(df["Net P&L (ZAR)"].sum()) if not df.empty else 0.0
     start_cap = st.number_input("Initial Live Deposit / Starting Capital (ZAR)", value=st.session_state.starting_capital, step=10.0)
@@ -72,7 +68,6 @@ def render_journal_page(live_xm_balance, daily_floor, target_goal=1000.00):
     pnl_color = "#39FF14" if total_pnl >= 0 else "#FF5722"
     r4.markdown(f"<div class='metric-mini'><div class='metric-mini-label'>Net P&L ({win_rate:.0f}% WR)</div><div class='metric-mini-val' style='color:{pnl_color};'>R{total_pnl:+.2f}</div></div>", unsafe_allow_html=True)
 
-    # Progress toward R1,000 Goal & Hard Floor Buffer
     floor_buffer = live_xm_balance - daily_floor
     st.markdown(
         f"<div class='xm-card' style='padding:12px 16px;'>"
@@ -83,9 +78,6 @@ def render_journal_page(live_xm_balance, daily_floor, target_goal=1000.00):
         unsafe_allow_html=True
     )
 
-    # ---------------------------------------------------------
-    # 2. MANUAL TRADE ENTRY FORM
-    # ---------------------------------------------------------
     with st.expander("➕ Log New Manual Trade", expanded=True):
         with st.form("manual_trade_form", clear_on_submit=True):
             c1, c2, c3 = st.columns(3)
@@ -106,7 +98,7 @@ def render_journal_page(live_xm_balance, daily_floor, target_goal=1000.00):
             t_exit = c8.number_input("Exit Price", value=0.00, step=0.01, format="%.5f")
             t_pnl = c9.number_input("Net P&L (ZAR)", value=0.00, step=1.00, format="%.2f")
 
-            c10, c11 = st.columns([1, 2])
+            c10, c11 = st.columns(2)
             t_rule = c10.selectbox("Followed All Rules?", ["Yes", "No (Early/Late)", "No (Oversized)"])
             t_notes = c11.text_input("Lesson / Execution Note", placeholder="e.g., Waited for 15m close, moved SL to BE...")
 
@@ -127,9 +119,6 @@ def render_journal_page(live_xm_balance, daily_floor, target_goal=1000.00):
                 })
                 st.rerun()
 
-    # ---------------------------------------------------------
-    # 3. EQUITY CURVE & EDITABLE LEDGER
-    # ---------------------------------------------------------
     if not df.empty:
         df["Running Balance (ZAR)"] = start_cap + df["Net P&L (ZAR)"].cumsum()
 
@@ -164,7 +153,6 @@ def render_journal_page(live_xm_balance, daily_floor, target_goal=1000.00):
             st.session_state.journal_entries = edited_df.to_dict("records")
             st.rerun()
 
-        # CSV Download & Restore Backup (Prevents Cloud Sleep Data Loss)
         b1, b2 = st.columns(2)
         csv_data = df.to_csv(index=False).encode("utf-8")
         b1.download_button(
