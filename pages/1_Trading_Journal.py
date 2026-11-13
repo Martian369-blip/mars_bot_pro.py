@@ -5,6 +5,9 @@ from journal import render_journal_page
 st.set_page_config(page_title="Trading Journal 📓", page_icon="📓", layout="wide")
 st.markdown(XM_THEME_CSS, unsafe_allow_html=True)
 
+# Direct one-tap button back to the Live Signals Terminal
+st.page_link("app.py", label="📡 Back to Live Signals Terminal", use_container_width=True)
+
 with st.sidebar:
     st.markdown("### 👽 Account Recon Settings")
     actual_xm_bal = st.number_input("Actual XM Live Balance (ZAR)", value=430.00, step=10.0)
