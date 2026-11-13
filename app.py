@@ -18,7 +18,6 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    /* Main Dark Background matching XM Markets UI */
     .stApp {
         background-color: #111622;
         color: #E6EDF3;
@@ -29,9 +28,8 @@ st.markdown("""
         padding-bottom: 2rem;
         max-width: 1100px;
     }
-    /* Top Header Ticker Styling */
     .ticker-title {
-        font-size: 1.5rem;
+        font-size: 1.45rem;
         font-weight: 800;
         color: #FFFFFF;
         letter-spacing: 0.5px;
@@ -39,7 +37,6 @@ st.markdown("""
     .price-up { color: #19B36B; font-weight: 700; font-size: 0.95rem; }
     .price-down { color: #E03E52; font-weight: 700; font-size: 0.95rem; }
 
-    /* SELL | SPREAD | BUY Action Bar */
     .quote-grid {
         display: grid;
         grid-template-columns: 1fr auto 1fr;
@@ -84,7 +81,6 @@ st.markdown("""
         margin-top: 2px;
     }
 
-    /* Precision Signal Card (Directly Underneath Spread) */
     .signal-card-sell {
         background-color: #191F2E;
         border: 1.5px solid #E03E52;
@@ -110,7 +106,6 @@ st.markdown("""
         margin-bottom: 16px;
     }
 
-    /* AI Overview Card */
     .ai-card {
         background-color: #181E2C;
         border: 1px solid #2A344A;
@@ -149,7 +144,6 @@ st.markdown("""
         font-weight: 700;
     }
 
-    /* Market Sentiment Bar */
     .sentiment-bar-container {
         width: 100%;
         height: 8px;
@@ -164,13 +158,13 @@ st.markdown("""
         background-color: #19B36B;
     }
 
-    /* Metric Boxes */
     .metric-mini {
         background-color: #141926;
         border: 1px solid #263045;
         border-radius: 8px;
         padding: 10px 12px;
         text-align: center;
+        margin-bottom: 8px;
     }
     .metric-mini-label {
         font-size: 0.72rem;
@@ -191,12 +185,12 @@ st.markdown("""
 # ---------------------------------------------------------
 INSTRUMENTS = {
     "GOLD (XAU/USD)": {
-        "ticker": "XAUUSD=X",
-        "fallback": "GC=F",
+        "ticker": "GC=F",
+        "fallback": "XAUUSD=X",
         "spread": 0.55,
         "decimals": 2,
         "pip_size": 0.10,
-        "usd_per_unit_001": 1.00,  # $1 move on 0.01 lot (1 oz) = $1.00
+        "usd_per_unit_001": 1.00,
         "max_sl_points": 3.80,
         "usd_correlated": "INVERSE_USD"
     },
@@ -206,7 +200,7 @@ INSTRUMENTS = {
         "spread": 0.00012,
         "decimals": 5,
         "pip_size": 0.0001,
-        "usd_per_unit_001": 1000.0,  # 0.0001 move on 0.01 lot (1,000) = $0.10
+        "usd_per_unit_001": 1000.0,
         "max_sl_points": 0.0022,
         "usd_correlated": "INVERSE_USD"
     },
@@ -292,9 +286,9 @@ with st.sidebar:
     st.markdown("#### 🔧 XM Broker Calibration")
     price_offset = st.number_input(
         "Broker Price Offset (+/-)",
-        value=0.00,
+        value=-7.80,
         step=0.10,
-        help="If XM quote differs slightly from feed, enter XM Price minus Feed Price here."
+        help="XM Spot Gold minus GC=F Futures (e.g., -7.80 aligns GC=F directly to XM Spot)."
     )
     custom_spread = st.number_input(
         "Override Broker Spread (0 = auto)",
@@ -307,33 +301,39 @@ with st.sidebar:
 # ---------------------------------------------------------
 # 4. DATA FETCHING & TECHNICAL ENGINE
 # ---------------------------------------------------------
+def safe_download(ticker, fallback, interval, period):
+    df = yf.download(ticker, interval=interval, period=period, progress=False)
+    if df is None or df.empty or len(df) < 30:
+        df = yf.download(fallback, interval=interval, period=period, progress=False)
+    if df is not None and not df.empty and isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+    return df.dropna().copy() if df is not None and not df.empty else pd.DataFrame()
+
 @st.cache_data(ttl=30)
 def get_market_data(symbol_key, tf_label):
     spec = INSTRUMENTS[symbol_key]
     interval, period = TIMEFRAMES[tf_label]
 
-    df = yf.download(spec["ticker"], interval=interval, period=period, progress=False)
-    if df is None or df.empty or len(df) < 55:
-        df = yf.download(spec["fallback"], interval=interval, period=period, progress=False)
+    df = safe_download(spec["ticker"], spec["fallback"], interval, period)
+    df_1h = safe_download(spec["ticker"], spec["fallback"], "1h", "1mo")
 
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
-
-    df = df.dropna().copy()
-
-    # Fetch 1H data for higher-timeframe trend filter
-    df_1h = yf.download(spec["ticker"], interval="1h", period="1mo", progress=False)
-    if df_1h is None or df_1h.empty or len(df_1h) < 55:
-        df_1h = yf.download(spec["fallback"], interval="1h", period="1mo", progress=False)
-    if isinstance(df_1h.columns, pd.MultiIndex):
-        df_1h.columns = df_1h.columns.get_level_values(0)
-    df_1h = df_1h.dropna().copy()
-
-    # Fetch USD/ZAR for exact Rand risk conversion
     zar_df = yf.download("ZAR=X", interval="1h", period="5d", progress=False)
-    if isinstance(zar_df.columns, pd.MultiIndex):
+    if zar_df is not None and not zar_df.empty and isinstance(zar_df.columns, pd.MultiIndex):
         zar_df.columns = zar_df.columns.get_level_values(0)
-    usdzar = float(zar_df["Close"].iloc[-1]) if not zar_df.empty else 16.76
+    usdzar = float(zar_df["Close"].iloc[-1]) if zar_df is not None and not zar_df.empty else 16.77
 
     return df, df_1h, usdzar
 
+def compute_indicators(df):
+    close = df["Close"]
+    high = df["High"]
+    low = df["Low"]
+
+    df["EMA9"] = close.ewm(span=9, adjust=False).mean()
+    df["EMA20"] = close.ewm(span=20, adjust=False).mean()
+    df["EMA50"] = close.ewm(span=50, adjust=False).mean()
+
+    delta = close.diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    avg_gain = gain.ewm(alpha=1/14, min_periods=14, adjust=False).mean()
