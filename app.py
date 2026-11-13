@@ -4,12 +4,10 @@ import plotly.graph_objects as go
 from config import INSTRUMENTS
 from design import XM_THEME_CSS
 from engine import fetch_all_frames, add_indicators, generate_signal
+from journal import render_journal_page
 
 st.set_page_config(page_title="MARS_BOT PRO 👽", page_icon="👽", layout="wide", initial_sidebar_state="collapsed")
 st.markdown(XM_THEME_CSS, unsafe_allow_html=True)
-
-# Direct one-tap switcher to your separate Trading Journal panel
-st.page_link("pages/1_Trading_Journal.py", label="📓 Open Trading Journal & Balance Recon", use_container_width=True)
 
 with st.sidebar:
     st.markdown("### 👽 MARS_BOT PRO Settings")
@@ -22,6 +20,21 @@ with st.sidebar:
     custom_spread = st.number_input("Override Spread (0 = auto)", value=0.00, step=0.01, format="%.5f")
     enforce_session_gate = st.checkbox("Enforce London/NY Gate (SAST)", value=True)
 
+# Dedicated Panel Switcher (Separates Signals Terminal from Journal completely)
+active_panel = st.radio(
+    "Navigation",
+    ["📡 Live Signals Terminal", "📓 Trading Journal & Recon"],
+    horizontal=True,
+    label_visibility="collapsed"
+)
+
+if active_panel == "📓 Trading Journal & Recon":
+    render_journal_page(account_balance, daily_floor, target_goal=1000.00)
+    st.stop()
+
+# ---------------------------------------------------------
+# PANEL 1: LIVE SIGNALS & MARKET TERMINAL
+# ---------------------------------------------------------
 selected_pair = st.selectbox("Instrument", list(INSTRUMENTS.keys()), index=0, label_visibility="collapsed")
 selected_tf = st.radio("TF", ["15m", "1H", "4H", "1D"], index=0, horizontal=True, label_visibility="collapsed")
 
@@ -102,4 +115,3 @@ lt_lbl = "<span style='color:#FF5722;'>Bearish</span>" if sig["lt_bear"] else "<
 st_bar = "<div style='width:55%;height:100%;background:#FF5722;'></div>" if sig["st_bear"] else "<div style='width:55%;height:100%;background:#39FF14;margin-left:45%;'></div>"
 it_bar = "<div style='width:55%;height:100%;background:#FF5722;'></div>" if sig["it_bear"] else "<div style='width:55%;height:100%;background:#39FF14;margin-left:45%;'></div>"
 lt_bar = "<div style='width:55%;height:100%;background:#FF5722;'></div>" if sig["lt_bear"] else "<div style='width:55%;height:100%;background:#39FF14;margin-left:45%;'></div>"
-st.markdown(f"<div class='xm-card'><div style='font-weight:800;font-size:1.0rem;margin-bottom:6px;'>Technical Score</div><div class='tech-row'><span style='color:#CBD5E1;'>Short-Term</span><span>{st_lbl}<span class='tech-pill-bg'>{st_bar}</span></span></div><div class='tech-row'><span style='color:#CBD5E1;'>Intermediate</span><span>{it_lbl}<span class='tech-pill-bg'>{it_bar}</span></span></div><div class='tech-row' style='border-bottom:none;'><span style='color:#CBD5E1;'>Long-Term</span><span>{lt_lbl}<span class='tech-pill-bg'>{lt_bar}</span></span></div><div style='display:flex;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid #1E2533;font-size:0.88rem;'><span><span style='color:#8B98B0;'>Support</span> &nbsp;<b>{support_lvl:.{dec}f}</b></span><span><span style='color:#8B98B0;'>Resistance</span> &nbsp;<b>{resist_lvl:.{dec}f}</b></span></div></div>", unsafe_allow_html=True)
