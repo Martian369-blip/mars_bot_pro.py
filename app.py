@@ -8,6 +8,9 @@ from engine import fetch_all_frames, add_indicators, generate_signal
 st.set_page_config(page_title="MARS_BOT PRO 👽", page_icon="👽", layout="wide", initial_sidebar_state="collapsed")
 st.markdown(XM_THEME_CSS, unsafe_allow_html=True)
 
+# Direct one-tap switcher to your separate Trading Journal panel
+st.page_link("pages/1_Trading_Journal.py", label="📓 Open Trading Journal & Balance Recon", use_container_width=True)
+
 with st.sidebar:
     st.markdown("### 👽 MARS_BOT PRO Settings")
     account_balance = st.number_input("Actual XM Live Balance (ZAR)", value=430.00, step=10.0)
