@@ -1,14 +1,9 @@
 import streamlit as st
-import yfinance as yf
-import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-from datetime import datetime
-import pytz
+from config import INSTRUMENTS, CUSTOM_CSS
+from engine import fetch_all_frames, add_indicators, generate_signal
 
-# ---------------------------------------------------------
-# 1. PAGE CONFIG & XM DARK INSTITUTIONAL STYLING
-# ---------------------------------------------------------
 st.set_page_config(
     page_title="MARS_BOT PRO | Institutional Terminal",
     page_icon="👽",
@@ -16,267 +11,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-st.markdown("""
-<style>
-    .stApp {
-        background-color: #111622;
-        color: #E6EDF3;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-    .block-container {
-        padding-top: 1.2rem;
-        padding-bottom: 2rem;
-        max-width: 1100px;
-    }
-    .ticker-title {
-        font-size: 1.45rem;
-        font-weight: 800;
-        color: #FFFFFF;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
-    }
-    .price-up { color: #19B36B; font-weight: 700; font-size: 0.95rem; }
-    .price-down { color: #E03E52; font-weight: 700; font-size: 0.95rem; }
-
-    .quote-grid {
-        display: grid;
-        grid-template-columns: 1fr auto 1fr;
-        gap: 10px;
-        align-items: center;
-        margin: 12px 0 18px 0;
-    }
-    .sell-box {
-        background: linear-gradient(135deg, #D93848, #B82837);
-        border-radius: 10px;
-        padding: 12px 16px;
-        text-align: center;
-        color: white;
-        box-shadow: 0 4px 12px rgba(217, 56, 72, 0.25);
-    }
-    .buy-box {
-        background: linear-gradient(135deg, #1E9E63, #15804E);
-        border-radius: 10px;
-        padding: 12px 16px;
-        text-align: center;
-        color: white;
-        box-shadow: 0 4px 12px rgba(30, 158, 99, 0.25);
-    }
-    .spread-pill {
-        background-color: #FFFFFF;
-        color: #111622;
-        font-weight: 800;
-        font-size: 0.85rem;
-        padding: 6px 12px;
-        border-radius: 6px;
-        text-align: center;
-    }
-    .quote-label {
-        font-size: 0.72rem;
-        font-weight: 700;
-        letter-spacing: 1px;
-        opacity: 0.9;
-    }
-    .quote-val {
-        font-size: 1.25rem;
-        font-weight: 800;
-        margin-top: 2px;
-    }
-
-    .signal-card-sell {
-        background-color: #191F2E;
-        border: 1.5px solid #E03E52;
-        border-left: 6px solid #E03E52;
-        border-radius: 12px;
-        padding: 16px 20px;
-        margin-bottom: 16px;
-    }
-    .signal-card-buy {
-        background-color: #191F2E;
-        border: 1.5px solid #19B36B;
-        border-left: 6px solid #19B36B;
-        border-radius: 12px;
-        padding: 16px 20px;
-        margin-bottom: 16px;
-    }
-    .signal-card-wait {
-        background-color: #191F2E;
-        border: 1.5px solid #F59E0B;
-        border-left: 6px solid #F59E0B;
-        border-radius: 12px;
-        padding: 16px 20px;
-        margin-bottom: 16px;
-    }
-
-    .ai-card {
-        background-color: #181E2C;
-        border: 1px solid #2A344A;
-        border-radius: 12px;
-        padding: 16px 18px;
-        margin-top: 12px;
-        margin-bottom: 16px;
-    }
-    .ai-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-    }
-    .badge-bearish {
-        background-color: rgba(224, 62, 82, 0.18);
-        color: #FF5C70;
-        padding: 3px 10px;
-        border-radius: 6px;
-        font-size: 0.78rem;
-        font-weight: 700;
-    }
-    .badge-bullish {
-        background-color: rgba(25, 179, 107, 0.18);
-        color: #2EE58F;
-        padding: 3px 10px;
-        border-radius: 6px;
-        font-size: 0.78rem;
-        font-weight: 700;
-    }
-    .badge-neutral {
-        background-color: rgba(245, 158, 11, 0.18);
-        color: #FBBF24;
-        padding: 3px 10px;
-        border-radius: 6px;
-        font-size: 0.78rem;
-        font-weight: 700;
-    }
-
-    .sentiment-bar-container {
-        width: 100%;
-        height: 8px;
-        background-color: #E03E52;
-        border-radius: 4px;
-        overflow: hidden;
-        margin-top: 6px;
-        margin-bottom: 14px;
-    }
-    .sentiment-bar-buy {
-        height: 100%;
-        background-color: #19B36B;
-    }
-
-    .metric-mini {
-        background-color: #141926;
-        border: 1px solid #263045;
-        border-radius: 8px;
-        padding: 10px 12px;
-        text-align: center;
-        margin-bottom: 8px;
-    }
-    .metric-mini-label {
-        font-size: 0.72rem;
-        color: #8B98B0;
-        text-transform: uppercase;
-    }
-    .metric-mini-val {
-        font-size: 1.05rem;
-        font-weight: 800;
-        color: #FFFFFF;
-        margin-top: 2px;
-    }
-</style>
-""", unsafe_allow_html=True)
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 2. INSTRUMENT & BROKER SPECIFICATIONS (XM STANDARD ZAR)
-# ---------------------------------------------------------
-INSTRUMENTS = {
-    "GOLD (XAU/USD)": {
-        "ticker": "GC=F",
-        "fallback": "XAUUSD=X",
-        "spread": 0.55,
-        "decimals": 2,
-        "pip_size": 0.10,
-        "usd_per_unit_001": 1.00,
-        "max_sl_points": 3.80,
-        "usd_correlated": "INVERSE_USD"
-    },
-    "EUR/USD": {
-        "ticker": "EURUSD=X",
-        "fallback": "EURUSD=X",
-        "spread": 0.00012,
-        "decimals": 5,
-        "pip_size": 0.0001,
-        "usd_per_unit_001": 1000.0,
-        "max_sl_points": 0.0022,
-        "usd_correlated": "INVERSE_USD"
-    },
-    "GBP/USD": {
-        "ticker": "GBPUSD=X",
-        "fallback": "GBPUSD=X",
-        "spread": 0.00015,
-        "decimals": 5,
-        "pip_size": 0.0001,
-        "usd_per_unit_001": 1000.0,
-        "max_sl_points": 0.0025,
-        "usd_correlated": "INVERSE_USD"
-    },
-    "USD/JPY": {
-        "ticker": "USDJPY=X",
-        "fallback": "USDJPY=X",
-        "spread": 0.016,
-        "decimals": 3,
-        "pip_size": 0.01,
-        "usd_per_unit_001": 6.26,
-        "max_sl_points": 0.25,
-        "usd_correlated": "DIRECT_USD"
-    },
-    "AUD/USD": {
-        "ticker": "AUDUSD=X",
-        "fallback": "AUDUSD=X",
-        "spread": 0.00014,
-        "decimals": 5,
-        "pip_size": 0.0001,
-        "usd_per_unit_001": 1000.0,
-        "max_sl_points": 0.0020,
-        "usd_correlated": "INVERSE_USD"
-    },
-    "USD/CAD": {
-        "ticker": "USDCAD=X",
-        "fallback": "USDCAD=X",
-        "spread": 0.00018,
-        "decimals": 5,
-        "pip_size": 0.0001,
-        "usd_per_unit_001": 720.0,
-        "max_sl_points": 0.0022,
-        "usd_correlated": "DIRECT_USD"
-    },
-    "USD/CHF": {
-        "ticker": "USDCHF=X",
-        "fallback": "USDCHF=X",
-        "spread": 0.00016,
-        "decimals": 5,
-        "pip_size": 0.0001,
-        "usd_per_unit_001": 1130.0,
-        "max_sl_points": 0.0022,
-        "usd_correlated": "DIRECT_USD"
-    },
-    "NZD/USD": {
-        "ticker": "NZDUSD=X",
-        "fallback": "NZDUSD=X",
-        "spread": 0.00018,
-        "decimals": 5,
-        "pip_size": 0.0001,
-        "usd_per_unit_001": 1000.0,
-        "max_sl_points": 0.0020,
-        "usd_correlated": "INVERSE_USD"
-    }
-}
-
-TIMEFRAMES = {
-    "15m": ("15m", "5d"),
-    "1H": ("1h", "1mo"),
-    "4H": ("1h", "3mo"),
-    "1D": ("1d", "6mo")
-}
-
-# ---------------------------------------------------------
-# 3. SIDEBAR: LIVE ACCOUNT & BROKER CALIBRATION
+# SIDEBAR: LIVE ACCOUNT & XM CALIBRATION
 # ---------------------------------------------------------
 with st.sidebar:
     st.markdown("### 👽 MARS_BOT PRO Settings")
@@ -287,54 +25,184 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("#### 🔧 XM Broker Calibration")
     price_offset = st.number_input(
-        "Broker Price Offset (+/-)",
+        "Gold Broker Offset (+/-)",
         value=-7.80,
         step=0.10,
-        help="XM Spot Gold minus GC=F Futures (e.g., -7.80 aligns GC=F directly to XM Spot)."
+        help="XM Spot Gold minus GC=F Futures (e.g., -7.80 aligns GC=F to XM Spot)."
     )
-    custom_spread = st.number_input(
-        "Override Broker Spread (0 = auto)",
-        value=0.00,
-        step=0.01,
-        format="%.5f"
-    )
+    custom_spread = st.number_input("Override Spread (0 = auto)", value=0.00, step=0.01, format="%.5f")
     enforce_session_gate = st.checkbox("Enforce London/NY Liquidity Gate (SAST)", value=True)
 
 # ---------------------------------------------------------
-# 4. DATA FETCHING & TECHNICAL ENGINE
+# TOP CONTROLS (XM INSTRUMENT + TIMEFRAME SELECTOR)
 # ---------------------------------------------------------
-def safe_download(ticker, fallback, interval, period):
-    df = yf.download(ticker, interval=interval, period=period, progress=False)
-    if df is None or df.empty or len(df) < 30:
-        df = yf.download(fallback, interval=interval, period=period, progress=False)
-    if df is not None and not df.empty and isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
-    return df.dropna().copy() if df is not None and not df.empty else pd.DataFrame()
+selected_pair = st.selectbox("Select Instrument", list(INSTRUMENTS.keys()), index=0, label_visibility="collapsed")
+selected_tf = st.radio("Timeframe", ["15m", "1H", "4H", "1D"], index=0, horizontal=True, label_visibility="collapsed")
 
-@st.cache_data(ttl=30)
-def get_market_data(symbol_key, tf_label):
-    spec = INSTRUMENTS[symbol_key]
-    interval, period = TIMEFRAMES[tf_label]
+spec = INSTRUMENTS[selected_pair]
+dec = spec["decimals"]
+spread = custom_spread if custom_spread > 0 else spec["spread"]
+active_offset = price_offset if selected_pair == "GOLD (XAU/USD)" else 0.0
 
-    df = safe_download(spec["ticker"], spec["fallback"], interval, period)
-    df_1h = safe_download(spec["ticker"], spec["fallback"], "1h", "1mo")
+df_raw, df_1h_raw, df_1d_raw, usdzar = fetch_all_frames(selected_pair, selected_tf)
 
-    zar_df = yf.download("ZAR=X", interval="1h", period="5d", progress=False)
-    if zar_df is not None and not zar_df.empty and isinstance(zar_df.columns, pd.MultiIndex):
-        zar_df.columns = zar_df.columns.get_level_values(0)
-    usdzar = float(zar_df["Close"].iloc[-1]) if zar_df is not None and not zar_df.empty else 16.77
+if df_raw.empty or df_1h_raw.empty:
+    st.warning("Market feed is refreshing. Tap 'Rerun' in the top-right menu.")
+    st.stop()
 
-    return df, df_1h, usdzar
+df = add_indicators(df_raw)
+df_1h = add_indicators(df_1h_raw)
+df_1d = add_indicators(df_1d_raw) if not df_1d_raw.empty else df_1h
 
-def compute_indicators(df):
-    close = df["Close"]
-    high = df["High"]
-    low = df["Low"]
+for col in ["Open", "High", "Low", "Close", "EMA9", "EMA20", "EMA50"]:
+    df[col] = df[col] + active_offset
+    df_1h[col] = df_1h[col] + active_offset
+    if col in df_1d.columns:
+        df_1d[col] = df_1d[col] + active_offset
 
-    df["EMA9"] = close.ewm(span=9, adjust=False).mean()
-    df["EMA20"] = close.ewm(span=20, adjust=False).mean()
-    df["EMA50"] = close.ewm(span=50, adjust=False).mean()
+live_bid = float(df["Close"].iloc[-1])
+live_ask = live_bid + spread
 
-    delta = close.diff()
-    gain = delta.clip(lower=0)
-    loss = -delta.clip(upper=0)
+# Daily Range & Change Stats (Matching XM Screenshot 2)
+day_slice = df.tail(24)
+day_open = float(day_slice["Open"].iloc[0])
+day_low = float(day_slice["Low"].min())
+day_high = float(day_slice["High"].max())
+day_diff = live_bid - day_open
+day_pct = (day_diff / day_open) * 100 if day_open != 0 else 0.0
+range_pos = int(np.clip(((live_bid - day_low) / max(day_high - day_low, 1e-6)) * 100, 2, 98))
+
+# Support & Resistance Levels (Matching XM Screenshot 2 Footer)
+support_lvl = float(df_1h["Low"].tail(48).min())
+resist_lvl = float(df_1h["High"].tail(48).max())
+
+# ---------------------------------------------------------
+# 1. HEADER TICKER (MATCHING SCREENSHOT 1)
+# ---------------------------------------------------------
+change_class = "price-up" if day_diff >= 0 else "price-down"
+arrow = "↗" if day_diff >= 0 else "↘"
+st.markdown(
+    f"<div class='ticker-title'>{selected_pair} "
+    f"<span class='{change_class}'>{day_diff:+.{dec}f} {arrow} {day_pct:+.2f}% · {selected_tf}</span>"
+    f"</div>",
+    unsafe_allow_html=True
+)
+
+# ---------------------------------------------------------
+# 2. CANDLESTICK CHART (DARK XM / TRADINGVIEW STYLE)
+# ---------------------------------------------------------
+plot_df = df.tail(55)
+fig = go.Figure()
+
+fig.add_trace(go.Candlestick(
+    x=plot_df.index,
+    open=plot_df["Open"],
+    high=plot_df["High"],
+    low=plot_df["Low"],
+    close=plot_df["Close"],
+    increasing_line_color="#19B36B",
+    decreasing_line_color="#E03E52",
+    increasing_fillcolor="#19B36B",
+    decreasing_fillcolor="#E03E52"
+))
+fig.add_trace(go.Scatter(x=plot_df.index, y=plot_df["EMA9"], line=dict(color="#38BDF8", width=1.3)))
+fig.add_trace(go.Scatter(x=plot_df.index, y=plot_df["EMA20"], line=dict(color="#FBBF24", width=1.3)))
+
+fig.update_layout(
+    height=270,
+    margin=dict(l=5, r=45, t=8, b=8),
+    paper_bgcolor="#111622",
+    plot_bgcolor="#111622",
+    xaxis_rangeslider_visible=False,
+    showlegend=False,
+    xaxis=dict(gridcolor="#1E2638", showgrid=True, color="#8B98B0"),
+    yaxis=dict(side="right", gridcolor="#1E2638", showgrid=True, color="#8B98B0", tickformat=f".{dec}f")
+)
+st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+# ---------------------------------------------------------
+# 3. SELL | SPREAD | BUY QUOTE BAR
+# ---------------------------------------------------------
+spread_display = f"{spread:.{dec}f}" if selected_pair == "GOLD (XAU/USD)" else f"{spread / spec['pip_size']:.1f} pips"
+
+st.markdown(f"""
+<div class="quote-grid">
+    <div class="sell-box">
+        <div class="quote-label">SELL</div>
+        <div class="quote-val">{live_bid:.{dec}f}</div>
+    </div>
+    <div class="spread-pill">{spread_display}</div>
+    <div class="buy-box">
+        <div class="quote-label">BUY</div>
+        <div class="quote-val">{live_ask:.{dec}f}</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# ---------------------------------------------------------
+# 4. ACCURATE SIGNALS (DIRECTLY UNDERNEATH SPREAD)
+# ---------------------------------------------------------
+sig = generate_signal(
+    selected_pair, selected_tf, df, df_1h, df_1d, usdzar,
+    account_balance, daily_floor, max_risk_zar, lot_size, spread, enforce_session_gate
+)
+
+card_css = "signal-card-sell" if sig["type"] == "SELL" else ("signal-card-buy" if sig["type"] == "BUY" else "signal-card-wait")
+
+st.markdown(f"""
+<div class="{card_css}">
+    <div style="font-size:1.05rem; font-weight:800; margin-bottom:4px;">{sig['title']}</div>
+    <div style="font-size:0.86rem; color:#CBD5E1; margin-bottom:8px;">{sig['reason']}</div>
+    <div style="font-size:0.78rem; color:#94A3B8;">{sig['session_msg']} · USD/ZAR: <b>R{usdzar:.2f}</b> · Lot: <b>{lot_size}</b></div>
+</div>
+""", unsafe_allow_html=True)
+
+if sig["type"] in ["SELL", "BUY"]:
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        st.markdown(f"<div class='metric-mini'><div class='metric-mini-label'>Entry</div><div class='metric-mini-val'>{sig['entry']:.{dec}f}</div></div>", unsafe_allow_html=True)
+    with m2:
+        st.markdown(f"<div class='metric-mini'><div class='metric-mini-label'>Stop Loss (-R{sig['risk_zar']:.0f})</div><div class='metric-mini-val' style='color:#FF5C70;'>{sig['sl']:.{dec}f}</div></div>", unsafe_allow_html=True)
+    with m3:
+        st.markdown(f"<div class='metric-mini'><div class='metric-mini-label'>Breakeven</div><div class='metric-mini-val' style='color:#38BDF8;'>{sig['be']:.{dec}f}</div></div>", unsafe_allow_html=True)
+    with m4:
+        st.markdown(f"<div class='metric-mini'><div class='metric-mini-label'>Take Profit (+R{sig['reward_zar']:.0f})</div><div class='metric-mini-val' style='color:#2EE58F;'>{sig['tp']:.{dec}f}</div></div>", unsafe_allow_html=True)
+
+# ---------------------------------------------------------
+# 5. AI OVERVIEW CARD (MATCHING SCREENSHOT 1)
+# ---------------------------------------------------------
+if sig["it_bear"]:
+    bias_badge = "<span class='badge-bearish'>Bearish ↘</span>"
+    ai_text = f"{selected_pair} remains under higher-timeframe selling pressure below its 1H 20 & 50 EMAs (RSI {sig['rsi']:.1f}). Prioritize selling pullbacks into EMA9/EMA20 resistance during active London or NY liquidity."
+else:
+    bias_badge = "<span class='badge-bullish'>Bullish ↗</span>"
+    ai_text = f"{selected_pair} holds bullish 1H momentum above its key moving averages (RSI {sig['rsi']:.1f}). Look for pullback continuation entries on closed {selected_tf} candles."
+
+st.markdown(f"""
+<div class="xm-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span style="font-weight:800; font-size:0.98rem;">✨ AI Overview</span>
+        {bias_badge}
+    </div>
+    <div style="font-size:0.88rem; color:#CBD5E1; line-height:1.45;">{ai_text}</div>
+</div>
+""", unsafe_allow_html=True)
+
+# ---------------------------------------------------------
+# 6. MARKET SENTIMENT, DAILY RANGE & TECHNICAL SCORE (SCREENSHOT 2)
+# ---------------------------------------------------------
+ema_score = 50 + np.clip(((sig["close"] - sig["ema20"]) / max(sig["atr"], 1e-6)) * 12, -25, 25)
+buy_pct = int(round((ema_score * 0.5) + (np.clip(sig["rsi"], 15, 85) * 0.5)))
+sell_pct = 100 - buy_pct
+
+st_label = "<span style='color:#E03E52;'>Bearish</span>" if sig["st_bear"] else "<span style='color:#19B36B;'>Bullish</span>"
+it_label = "<span style='color:#E03E52;'>Bearish</span>" if sig["it_bear"] else "<span style='color:#19B36B;'>Bullish</span>"
+lt_label = "<span style='color:#E03E52;'>Bearish</span>" if sig["lt_bear"] else "<span style='color:#19B36B;'>Bullish</span>"
+
+st_bar = "<div style='width:55%; height:100%; background:#E03E52;'></div>" if sig["st_bear"] else "<div style='width:55%; height:100%; background:#19B36B; margin-left:45%;'></div>"
+it_bar = "<div style='width:55%; height:100%; background:#E03E52;'></div>" if sig["it_bear"] else "<div style='width:55%; height:100%; background:#19B36B; margin-left:45%;'></div>"
+lt_bar = "<div style='width:55%; height:100%; background:#E03E52;'></div>" if sig["lt_bear"] else "<div style='width:55%; height:100%; background:#19B36B; margin-left:45%;'></div>"
+
+st.markdown(f"""
+<div class="xm-card">
+    <div style="font-weight:800; font-size:1.0rem;">Market Sentiment</div>
