@@ -1,7 +1,7 @@
 XM_THEME_CSS = """
 <style>
     .stApp {
-        background-color: #111622;
+        background-color: #0B0E14;
         color: #E6EDF3;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
@@ -16,8 +16,8 @@ XM_THEME_CSS = """
         color: #FFFFFF;
         margin-bottom: 6px;
     }
-    .price-up { color: #19B36B; font-weight: 700; font-size: 0.95rem; }
-    .price-down { color: #E03E52; font-weight: 700; font-size: 0.95rem; }
+    .price-up { color: #39FF14; font-weight: 700; font-size: 0.95rem; }
+    .price-down { color: #FF5722; font-weight: 700; font-size: 0.95rem; }
 
     .quote-grid {
         display: grid;
@@ -27,74 +27,80 @@ XM_THEME_CSS = """
         margin: 12px 0 16px 0;
     }
     .sell-box {
-        background: linear-gradient(135deg, #D93848, #B82837);
+        background: linear-gradient(135deg, #FF5722, #D84315);
         border-radius: 10px;
         padding: 12px 16px;
         text-align: center;
-        color: white;
+        color: #FFFFFF;
+        box-shadow: 0 4px 14px rgba(255, 87, 34, 0.30);
     }
     .buy-box {
-        background: linear-gradient(135deg, #1E9E63, #15804E);
+        background: linear-gradient(135deg, #2ECC40, #1FAA2E);
+        border: 1px solid #39FF14;
         border-radius: 10px;
         padding: 12px 16px;
         text-align: center;
-        color: white;
+        color: #081208;
+        box-shadow: 0 4px 14px rgba(57, 255, 20, 0.25);
     }
     .spread-pill {
-        background-color: #FFFFFF;
-        color: #111622;
+        background-color: #141923;
+        border: 1px solid #FF5722;
+        color: #39FF14;
         font-weight: 800;
         font-size: 0.85rem;
         padding: 6px 12px;
         border-radius: 6px;
         text-align: center;
     }
-    .quote-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; opacity: 0.9; }
-    .quote-val { font-size: 1.25rem; font-weight: 800; margin-top: 2px; }
+    .quote-label { font-size: 0.72rem; font-weight: 800; letter-spacing: 1px; opacity: 0.92; }
+    .quote-val { font-size: 1.25rem; font-weight: 900; margin-top: 2px; }
 
     .signal-card-sell {
-        background-color: #191F2E;
-        border: 1.5px solid #E03E52;
-        border-left: 6px solid #E03E52;
+        background-color: #141821;
+        border: 1.5px solid #FF5722;
+        border-left: 6px solid #FF5722;
         border-radius: 12px;
         padding: 15px 18px;
         margin-bottom: 14px;
     }
     .signal-card-buy {
-        background-color: #191F2E;
-        border: 1.5px solid #19B36B;
-        border-left: 6px solid #19B36B;
+        background-color: #141821;
+        border: 1.5px solid #39FF14;
+        border-left: 6px solid #39FF14;
         border-radius: 12px;
         padding: 15px 18px;
         margin-bottom: 14px;
     }
     .signal-card-wait {
-        background-color: #191F2E;
-        border: 1.5px solid #F59E0B;
-        border-left: 6px solid #F59E0B;
+        background-color: #141821;
+        border: 1.5px solid #FF8A65;
+        border-left: 6px solid #FF8A65;
         border-radius: 12px;
         padding: 15px 18px;
         margin-bottom: 14px;
     }
 
     .xm-card {
-        background-color: #181E2C;
-        border: 1px solid #2A344A;
+        background-color: #12161F;
+        border: 1px solid #232B3A;
         border-radius: 12px;
         padding: 16px 18px;
         margin-bottom: 14px;
     }
     .badge-bearish {
-        background-color: rgba(224, 62, 82, 0.18);
-        color: #FF5C70;
+        background-color: rgba(255, 87, 34, 0.18);
+        color: #FF7043;
+        border: 1px solid rgba(255, 87, 34, 0.4);
         padding: 3px 10px;
         border-radius: 6px;
         font-size: 0.78rem;
         font-weight: 700;
     }
     .badge-bullish {
-        background-color: rgba(25, 179, 107, 0.18);
-        color: #2EE58F;
+        background-color: rgba(57, 255, 20, 0.14);
+        color: #39FF14;
+        border: 1px solid rgba(57, 255, 20, 0.4);
         padding: 3px 10px;
         border-radius: 6px;
         font-size: 0.78rem;
@@ -104,28 +110,29 @@ XM_THEME_CSS = """
     .sentiment-bar-container {
         width: 100%;
         height: 8px;
-        background-color: #E03E52;
+        background-color: #FF5722;
         border-radius: 4px;
         overflow: hidden;
         margin: 8px 0 4px 0;
     }
-    .sentiment-bar-buy { height: 100%; background-color: #19B36B; }
+    .sentiment-bar-buy { height: 100%; background-color: #39FF14; }
 
     .range-track {
         position: relative;
         width: 100%;
         height: 6px;
-        background-color: #2A344A;
+        background-color: #232B3A;
         border-radius: 4px;
         margin: 12px 0 8px 0;
     }
-    .range-fill { height: 100%; background-color: #19B36B; border-radius: 4px; }
+    .range-fill { height: 100%; background-color: #39FF14; border-radius: 4px; }
     .range-dot {
         position: absolute;
         top: -4px;
         width: 14px;
         height: 14px;
-        background-color: #FFFFFF;
+        background-color: #FF5722;
+        border: 2px solid #FFFFFF;
         border-radius: 50%;
         transform: translateX(-50%);
     }
@@ -135,13 +142,13 @@ XM_THEME_CSS = """
         justify-content: space-between;
         align-items: center;
         padding: 10px 0;
-        border-bottom: 1px solid #242E42;
+        border-bottom: 1px solid #1E2533;
         font-size: 0.9rem;
     }
     .tech-pill-bg {
         width: 65px;
         height: 8px;
-        background-color: #242E42;
+        background-color: #1E2533;
         border-radius: 4px;
         overflow: hidden;
         display: inline-block;
@@ -149,8 +156,8 @@ XM_THEME_CSS = """
     }
 
     .metric-mini {
-        background-color: #141926;
-        border: 1px solid #263045;
+        background-color: #0E121A;
+        border: 1px solid #232B3A;
         border-radius: 8px;
         padding: 10px 12px;
         text-align: center;
