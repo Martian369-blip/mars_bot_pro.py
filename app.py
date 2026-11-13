@@ -33,6 +33,7 @@ st.markdown("""
         font-weight: 800;
         color: #FFFFFF;
         letter-spacing: 0.5px;
+        margin-bottom: 8px;
     }
     .price-up { color: #19B36B; font-weight: 700; font-size: 0.95rem; }
     .price-down { color: #E03E52; font-weight: 700; font-size: 0.95rem; }
@@ -111,6 +112,7 @@ st.markdown("""
         border: 1px solid #2A344A;
         border-radius: 12px;
         padding: 16px 18px;
+        margin-top: 12px;
         margin-bottom: 16px;
     }
     .ai-header {
@@ -336,4 +338,3 @@ def compute_indicators(df):
     delta = close.diff()
     gain = delta.clip(lower=0)
     loss = -delta.clip(upper=0)
-    avg_gain = gain.ewm(alpha=1/14, min_periods=14, adjust=False).mean()
