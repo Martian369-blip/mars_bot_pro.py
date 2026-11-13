@@ -63,7 +63,7 @@ for col in ["Open", "High", "Low", "Close", "EMA9", "EMA20", "EMA50"]:
 live_bid = float(df["Close"].iloc[-1])
 live_ask = live_bid + spread
 
-# Daily Range & Change Stats (Matching XM Screenshot 2)
+# Daily Range & Change Stats
 day_slice = df.tail(24)
 day_open = float(day_slice["Open"].iloc[0])
 day_low = float(day_slice["Low"].min())
@@ -72,24 +72,24 @@ day_diff = live_bid - day_open
 day_pct = (day_diff / day_open) * 100 if day_open != 0 else 0.0
 range_pos = int(np.clip(((live_bid - day_low) / max(day_high - day_low, 1e-6)) * 100, 2, 98))
 
-# Support & Resistance Levels (Matching XM Screenshot 2 Footer)
+# Support & Resistance Levels
 support_lvl = float(df_1h["Low"].tail(48).min())
 resist_lvl = float(df_1h["High"].tail(48).max())
 
 # ---------------------------------------------------------
-# 1. HEADER TICKER (MATCHING SCREENSHOT 1)
+# 1. HEADER TICKER
 # ---------------------------------------------------------
 change_class = "price-up" if day_diff >= 0 else "price-down"
 arrow = "↗" if day_diff >= 0 else "↘"
-st.markdown(
+header_html = (
     f"<div class='ticker-title'>{selected_pair} "
     f"<span class='{change_class}'>{day_diff:+.{dec}f} {arrow} {day_pct:+.2f}% · {selected_tf}</span>"
-    f"</div>",
-    unsafe_allow_html=True
+    f"</div>"
 )
+st.markdown(header_html, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 2. CANDLESTICK CHART (DARK XM / TRADINGVIEW STYLE)
+# 2. CANDLESTICK CHART
 # ---------------------------------------------------------
 plot_df = df.tail(55)
 fig = go.Figure()
@@ -125,19 +125,14 @@ st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 # ---------------------------------------------------------
 spread_display = f"{spread:.{dec}f}" if selected_pair == "GOLD (XAU/USD)" else f"{spread / spec['pip_size']:.1f} pips"
 
-st.markdown(f"""
-<div class="quote-grid">
-    <div class="sell-box">
-        <div class="quote-label">SELL</div>
-        <div class="quote-val">{live_bid:.{dec}f}</div>
-    </div>
-    <div class="spread-pill">{spread_display}</div>
-    <div class="buy-box">
-        <div class="quote-label">BUY</div>
-        <div class="quote-val">{live_ask:.{dec}f}</div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+quote_html = (
+    f"<div class='quote-grid'>"
+    f"<div class='sell-box'><div class='quote-label'>SELL</div><div class='quote-val'>{live_bid:.{dec}f}</div></div>"
+    f"<div class='spread-pill'>{spread_display}</div>"
+    f"<div class='buy-box'><div class='quote-label'>BUY</div><div class='quote-val'>{live_ask:.{dec}f}</div></div>"
+    f"</div>"
+)
+st.markdown(quote_html, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
 # 4. ACCURATE SIGNALS (DIRECTLY UNDERNEATH SPREAD)
@@ -149,13 +144,14 @@ sig = generate_signal(
 
 card_css = "signal-card-sell" if sig["type"] == "SELL" else ("signal-card-buy" if sig["type"] == "BUY" else "signal-card-wait")
 
-st.markdown(f"""
-<div class="{card_css}">
-    <div style="font-size:1.05rem; font-weight:800; margin-bottom:4px;">{sig['title']}</div>
-    <div style="font-size:0.86rem; color:#CBD5E1; margin-bottom:8px;">{sig['reason']}</div>
-    <div style="font-size:0.78rem; color:#94A3B8;">{sig['session_msg']} · USD/ZAR: <b>R{usdzar:.2f}</b> · Lot: <b>{lot_size}</b></div>
-</div>
-""", unsafe_allow_html=True)
+sig_html = (
+    f"<div class='{card_css}'>"
+    f"<div style='font-size:1.05rem; font-weight:800; margin-bottom:4px;'>{sig['title']}</div>"
+    f"<div style='font-size:0.86rem; color:#CBD5E1; margin-bottom:8px;'>{sig['reason']}</div>"
+    f"<div style='font-size:0.78rem; color:#94A3B8;'>{sig['session_msg']} · USD/ZAR: <b>R{usdzar:.2f}</b> · Lot: <b>{lot_size}</b></div>"
+    f"</div>"
+)
+st.markdown(sig_html, unsafe_allow_html=True)
 
 if sig["type"] in ["SELL", "BUY"]:
     m1, m2, m3, m4 = st.columns(4)
@@ -169,7 +165,7 @@ if sig["type"] in ["SELL", "BUY"]:
         st.markdown(f"<div class='metric-mini'><div class='metric-mini-label'>Take Profit (+R{sig['reward_zar']:.0f})</div><div class='metric-mini-val' style='color:#2EE58F;'>{sig['tp']:.{dec}f}</div></div>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 5. AI OVERVIEW CARD (MATCHING SCREENSHOT 1)
+# 5. AI OVERVIEW CARD
 # ---------------------------------------------------------
 if sig["it_bear"]:
     bias_badge = "<span class='badge-bearish'>Bearish ↘</span>"
@@ -178,18 +174,17 @@ else:
     bias_badge = "<span class='badge-bullish'>Bullish ↗</span>"
     ai_text = f"{selected_pair} holds bullish 1H momentum above its key moving averages (RSI {sig['rsi']:.1f}). Look for pullback continuation entries on closed {selected_tf} candles."
 
-st.markdown(f"""
-<div class="xm-card">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-        <span style="font-weight:800; font-size:0.98rem;">✨ AI Overview</span>
-        {bias_badge}
-    </div>
-    <div style="font-size:0.88rem; color:#CBD5E1; line-height:1.45;">{ai_text}</div>
-</div>
-""", unsafe_allow_html=True)
+ai_html = (
+    f"<div class='xm-card'>"
+    f"<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;'>"
+    f"<span style='font-weight:800; font-size:0.98rem;'>✨ AI Overview</span>{bias_badge}</div>"
+    f"<div style='font-size:0.88rem; color:#CBD5E1; line-height:1.45;'>{ai_text}</div>"
+    f"</div>"
+)
+st.markdown(ai_html, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 6. MARKET SENTIMENT, DAILY RANGE & TECHNICAL SCORE (SCREENSHOT 2)
+# 6. MARKET SENTIMENT, DAILY RANGE & TECHNICAL SCORE
 # ---------------------------------------------------------
 ema_score = 50 + np.clip(((sig["close"] - sig["ema20"]) / max(sig["atr"], 1e-6)) * 12, -25, 25)
 buy_pct = int(round((ema_score * 0.5) + (np.clip(sig["rsi"], 15, 85) * 0.5)))
@@ -203,6 +198,7 @@ st_bar = "<div style='width:55%; height:100%; background:#E03E52;'></div>" if si
 it_bar = "<div style='width:55%; height:100%; background:#E03E52;'></div>" if sig["it_bear"] else "<div style='width:55%; height:100%; background:#19B36B; margin-left:45%;'></div>"
 lt_bar = "<div style='width:55%; height:100%; background:#E03E52;'></div>" if sig["lt_bear"] else "<div style='width:55%; height:100%; background:#19B36B; margin-left:45%;'></div>"
 
-st.markdown(f"""
-<div class="xm-card">
-    <div style="font-weight:800; font-size:1.0rem;">Market Sentiment</div>
+sentiment_html = (
+    f"<div class='xm-card'>"
+    f"<div style='font-weight:800; font-size:1.0rem;'>Market Sentiment</div>"
+    f"<div style='display:flex; justify-content:space-between; font-size:0.86rem; font-weight:700; margin-top:6px;'>"
